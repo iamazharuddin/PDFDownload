@@ -11,6 +11,8 @@
 		1BD5EE2A2A061F5D00BD8435 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD5EE292A061F5D00BD8435 /* ContentView.swift */; };
 		1BD5EE2C2A061F5E00BD8435 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1BD5EE2B2A061F5E00BD8435 /* Assets.xcassets */; };
 		1BD5EE2F2A061F5E00BD8435 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1BD5EE2E2A061F5E00BD8435 /* Preview Assets.xcassets */; };
+		1BD5EE362A061F7800BD8435 /* DownloadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD5EE352A061F7800BD8435 /* DownloadViewModel.swift */; };
+		1BD5EE382A06B02B00BD8435 /* PDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD5EE372A06B02B00BD8435 /* PDFView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +21,8 @@
 		1BD5EE292A061F5D00BD8435 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1BD5EE2B2A061F5E00BD8435 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1BD5EE2E2A061F5E00BD8435 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		1BD5EE352A061F7800BD8435 /* DownloadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadViewModel.swift; sourceTree = "<group>"; };
+		1BD5EE372A06B02B00BD8435 /* PDFView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +59,8 @@
 				1BD5EE292A061F5D00BD8435 /* ContentView.swift */,
 				1BD5EE2B2A061F5E00BD8435 /* Assets.xcassets */,
 				1BD5EE2D2A061F5E00BD8435 /* Preview Content */,
+				1BD5EE352A061F7800BD8435 /* DownloadViewModel.swift */,
+				1BD5EE372A06B02B00BD8435 /* PDFView.swift */,
 			);
 			path = PDFDownload;
 			sourceTree = "<group>";
@@ -138,7 +144,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				1BD5EE2A2A061F5D00BD8435 /* ContentView.swift in Sources */,
+				1BD5EE382A06B02B00BD8435 /* PDFView.swift in Sources */,
 				1BD5EE282A061F5D00BD8435 /* PDFDownloadApp.swift in Sources */,
+				1BD5EE362A061F7800BD8435 /* DownloadViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
