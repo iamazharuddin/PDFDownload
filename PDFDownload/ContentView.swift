@@ -5,8 +5,8 @@
 //  Created by Azharuddin 1 on 06/05/23.
 //
 
-
 import SwiftUI
+
 struct ContentView: View {
     @ObservedObject var downloadManager = DownloadManager()
 
@@ -19,164 +19,107 @@ struct ContentView: View {
     var body: some View {
         VStack {
             ForEach(pdfFiles, id: \.self) { fileURL in
-                VStack{
-                    HStack {
-                        Text(fileURL.lastPathComponent)
-                        Spacer()
-                        if (downloadManager.isFileExists(for: fileURL)){
-                            Button(action: {
-                            }) {
-                                Text("Open")
-                            }
-                        }else{
-                            Button(action: {
-                                downloadManager.startDownload(url: fileURL)
-                            }) {
-                                Text("Download")
-                            }
+                HStack {
+                    Text(fileURL.lastPathComponent)
+                    Spacer()
+                    if let progress = downloadManager.downloadProgress[fileURL] {
+                        Text("\(progress * 100, specifier: "%.1f")%")
+                    } else {
+                        Button(action: {
+                            downloadManager.startDownload(url: fileURL)
+                        }) {
+                            Text("Download")
                         }
                     }
-                    if  downloadManager.map[fileURL] != nil{
-                        ProgressView("Downloading", value: min(downloadManager.map[fileURL]!.progress, 1.0), total: 1.0)
-                    }
                 }
-            }
-            Button(action: {
-                downloadManager.deleteDownloadedFiles()
-            }) {
-                Text("Delete")
             }
         }
     }
 }
 
-class DownloadManager: ObservableObject {
-    @Published var map = [URL:Download]()
+class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDelegate {
+    var downloadProgress: [URL: Float] = [:]
+    var activeDownloads: [URL: URLSessionDownloadTask] = [:]
 
     func startDownload(url: URL) {
-        let download = Download(url: url)
-        download.delegate = self
-        download.startDownload()
-        map[url] = download
-    }
-    
-    func isFileExists(for url : URL) -> Bool{
-        let path = localFilePath(for: url)!.path
-        print(path)
-        return  FileManager.default.fileExists(atPath: path)
-    }
-    
-    func localFilePath(for url: URL) -> URL? {
-        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
-        return documentsPath.appendingPathComponent(url.lastPathComponent)
-    }
-    
-    func deleteDownloadedFiles() {
-            let fileManager = FileManager.default
-            let documentsDirectoryURL = try! fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            
-            do {
-                let files = try fileManager.contentsOfDirectory(at: documentsDirectoryURL, includingPropertiesForKeys: nil)
-                for file in files {
-                    try fileManager.removeItem(at: file)
-                }
-                map = [URL:Download]()
-            } catch {
-                print("Error deleting files: \(error)")
-            }
-        
-  
-        }
-    
-//    func handleOpenClick(_ download:Download){
-//        let documentsDirectoryURL  =   FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-//        let filePath = documentsDirectoryURL.appendingPathComponent(download.url.lastPathComponent).path
-//
-//        self.selectedUrl = URL(filePath: filePath)
-//
-//        showPdf.toggle()
-//    }
-}
-
-extension DownloadManager: DownloadDelegate {
-    func downloadDidFinish(download: Download) {
-        DispatchQueue.main.async {
-            var clonedMap = self.map
-            if let download = clonedMap[download.url]{
-                download.progress = 0.0
-                clonedMap[download.url] = download
-            }
-            self.map = clonedMap
-        }
-    }
-
-    func downloadProgressUpdated(download: Download, progress: Float) {
-        DispatchQueue.main.async {
-            var clonedMap = self.map
-            if let download = clonedMap[download.url]{
-                download.progress = progress
-                clonedMap[download.url] = download
-            }
-            self.map = clonedMap
-        }
-    }
-}
-
-protocol DownloadDelegate: AnyObject {
-    func downloadDidFinish(download: Download)
-    func downloadProgressUpdated(download: Download, progress: Float)
-}
-
-class Download  : NSObject, ObservableObject{
-    let url: URL
-    weak var delegate: DownloadDelegate?
-    var task: URLSessionDownloadTask?
-    @Published var progress: Float = 0.0
-    var destinationURL: URL {
-        let documentsDirectoryURL = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        return documentsDirectoryURL.appendingPathComponent(url.lastPathComponent)
-    }
-
-    init(url: URL) {
-        self.url = url
-    }
-
-    func startDownload() {
-        let request = URLRequest(url: url)
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-        task = session.downloadTask(with: request)
-        task?.resume()
-    }
-}
-
-extension Download: URLSessionDownloadDelegate {
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        guard let delegate = delegate else {
+        guard activeDownloads[url] == nil else {
             return
         }
 
-        let destinationURL = self.destinationURL
+        let downloadTask = createDownloadTask(url: url)
+        downloadProgress[url] = 0.0
+        activeDownloads[url] = downloadTask
+        downloadTask.resume()
+    }
+
+    func createDownloadTask(url: URL) -> URLSessionDownloadTask {
+        let sessionConfig = URLSessionConfiguration.default
+        let session = URLSession(configuration: sessionConfig, delegate: self, delegateQueue: nil)
+        let request = URLRequest(url: url)
+        let downloadTask = session.downloadTask(with: request)
+        downloadTask.resume()
+        return downloadTask
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        guard let originalURL = downloadTask.originalRequest?.url,
+            let destinationURL = destinationURL(for: originalURL) else {
+            return
+        }
 
         do {
             try FileManager.default.moveItem(at: location, to: destinationURL)
-            delegate.downloadDidFinish(download: self)
+            DispatchQueue.main.async {
+                self.downloadDidFinish(url: originalURL)
+            }
         } catch {
             print("Error moving downloaded file: \(error)")
+        }
+
+        DispatchQueue.main.async {
+            self.activeDownloads[originalURL] = nil
+            self.downloadProgress[originalURL] = nil
+            self.objectWillChange.send()
         }
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        let progress = Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
-        self.progress = progress
+        guard let url = downloadTask.originalRequest?.url,
+            let progress = calculateProgress(totalBytesWritten: totalBytesWritten, totalBytesExpectedToWrite: totalBytesExpectedToWrite) else {
+            return
+        }
 
         DispatchQueue.main.async {
-            self.delegate?.downloadProgressUpdated(download: self, progress: progress)
+            self.downloadProgress[url] = progress
+            self.objectWillChange.send()
+        }
+    }
+
+    func calculateProgress(totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) -> Float? {
+        guard totalBytesExpectedToWrite > 0 else {
+            return nil
+        }
+
+        return Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
+    }
+
+    func destinationURL(for url: URL) -> URL? {
+        let documentsDirectoryURL = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        return documentsDirectoryURL?.appendingPathComponent(url.lastPathComponent)
+    }
+
+    func downloadDidFinish(url: URL) {
+        // Handle download finish logic here
+        // For example, you can perform any necessary operations after the download completes
+        print("Download finished for URL: \(url)")
+
+        // You can access the downloaded file URL using the destinationURL(for:) method
+        if let destinationURL = destinationURL(for: url) {
+            print("File downloaded at: \(destinationURL.path)")
+
+            // Perform any further operations with the downloaded file, such as displaying it or processing it
+            // For example, you can update the UI to reflect the completion of the download
         }
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}
